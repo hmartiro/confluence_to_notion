@@ -15,7 +15,7 @@ Currently handles:
 5) Deleting JIRA ticket type images that show up huge
 6) Adding a callout that shows when the confluence page was made 
 7) Delete emoticon images that become broken
-8) Optionally fix links to imported 
+8) Optionally fix links to imported pages
 
 Does not handle: 
 1) Links to confluence pages not in the import (need a full map from confluence page URL to Notion page URL)
