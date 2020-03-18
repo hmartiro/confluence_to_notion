@@ -5,6 +5,8 @@ The current state of exporting from Confluence into Notion is that images
 and attachments are broken, titles are broken, and there are a bunch of
 annoying formatting issues. This fixes some of those.
 
+Compatible with Python 3.5 and above.
+
 Currently handles:  
 1) Deleting extraneous cells at the start of the page  
 2) Setting the page title properly  

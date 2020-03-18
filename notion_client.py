@@ -1,3 +1,11 @@
+"""
+Fix a Python 3.5 compatibility issue with the status= keyword to urllib3.Retry.
+
+Once this pull request is merged, can kill this module:
+
+    https://github.com/jamalex/notion-py/pull/121
+"""
+
 import hashlib
 from requests import Session
 from requests.adapters import HTTPAdapter
@@ -32,8 +40,11 @@ def create_session():
 
 class NotionClientPy35(nc.NotionClient):
     """
-    Client that is compatible with Python 3.5.
+    This is the entry point to using the API. Create an instance of this class, passing it the value of the
+    "token_v2" cookie from a logged-in browser session on Notion.so. Most of the methods on here are primarily
+    for internal use -- the main one you'll likely want to use is `get_block`.
     """
+
     def __init__(self, token_v2, monitor=False, start_monitoring=False, enable_caching=False, cache_key=None):
         self.session = create_session()
         self.session.cookies = cookiejar_from_dict({"token_v2": token_v2})
