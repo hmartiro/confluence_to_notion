@@ -58,7 +58,8 @@ Install requirements (just the unofficial Notion API):
 Test with dry run:  
 `python3 confluence_to_notion.py --confluence ~/Downloads/Confluence_Export --notion https://www.notion.so/blah/Path-To-Page --dry-run`
 
-If that looks good and prints the right titles and images, run without `--dry-run`.  
-This can take a while as it recursively parses all blocks and uploads a bunch of images to S3 through Notion.
+If that's looking good and printing the right titles and images, run without `--dry-run`.  
+No need to wait for dry run traverse all of the pages if it's looking reasonable, you can just abort.  
+The full run can take a while as it recursively parses all blocks and uploads a bunch of images to S3 through Notion.
 
-Notion will live update as the script runs.
+Notion will live update as the script runs, you can inspect the pages that have been already processed.
