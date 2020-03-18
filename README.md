@@ -17,9 +17,10 @@ Currently handles:
 7) Delete emoticon images that become broken
 
 Does not handle: 
-1) Links to other confluence pages
-2) Handle videos, PDFs and arbitrary other attachments?
-3) Callout should link back to original confluence page
+1) Links to other confluence pages (need a map from confluence page URL to Notion page URL)
+2) Handle videos, PDFs and arbitrary other attachments (they don't import into Notion)
+3) Callout should link back to original confluence page (need a map from confluence page URL to Notion page URL)
+4) Embedded Google Drive links (they don't import into Notion but are hidden in the HTML)
 
 # Usage
 
