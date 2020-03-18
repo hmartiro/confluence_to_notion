@@ -40,9 +40,10 @@ Save the URL of this page, it will be passed to the script.
 
 ### 3) Set your Notion cookie
 
-Open chrome dev tools (Fn + F12) to the Application tab.  
-Scroll down and find Cookies -> `notion.so`.  
-Find the name column `token_v2` and copy the value of it.
+In a browser session where you're logged into Notion.so, open:
+`chrome://settings/cookies/detail?site=www.notion.so`
+
+Find the `token_v2` entry and copy the Content.
 
 Set this as an environment variable as follows:  
 `export NOTION_TOKEN=8e8ec87b5cf11f4e354fb1d145f78ca...`
