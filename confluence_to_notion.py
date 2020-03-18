@@ -4,8 +4,8 @@ import os
 import sys
 import urllib
 
-import notion
 from notion import block as nb
+from notion import client as notion_client
 
 
 def main(client, notion_import_url, confluence_export_dir, space_name, dry_run=False):
@@ -183,7 +183,7 @@ def monkey_patch_for_python3_5():
         session.mount("https://", adapter)
         return session
 
-    notion.client.create_session
+    notion_client.create_session
 
 
 if __name__ == '__main__':
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     monkey_patch_for_python3_5()
 
     # Create client
-    client = notion.client.NotionClient(token_v2=notion_token)
+    client = notion_client.NotionClient(token_v2=notion_token)
 
     # Parse args
     parser = argparse.ArgumentParser(description='Fix Confluence to Notion HTML importing.')
