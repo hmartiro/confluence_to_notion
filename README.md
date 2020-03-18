@@ -15,9 +15,10 @@ Currently handles:
 5) Deleting JIRA ticket type images that show up huge
 6) Adding a callout that shows when the confluence page was made 
 7) Delete emoticon images that become broken
+8) Optionally fix links to imported 
 
 Does not handle: 
-1) Links to other confluence pages (need a map from confluence page URL to Notion page URL)
+1) Links to confluence pages not in the import (need a full map from confluence page URL to Notion page URL)
 2) Handle videos, PDFs and arbitrary other attachments (they don't import into Notion)
 3) Callout should link back to original confluence page (need a map from confluence page URL to Notion page URL)
 4) Embedded Google Drive links (they don't import into Notion but are hidden in the HTML)
