@@ -21,6 +21,7 @@ Does not handle:
 2) Handle videos, PDFs and arbitrary other attachments (they don't import into Notion)
 3) Callout should link back to original confluence page (need a map from confluence page URL to Notion page URL)
 4) Embedded Google Drive links (they don't import into Notion but are hidden in the HTML)
+5) Directory structure (Notion imports flatly, need parent mapping)
 
 # Usage
 

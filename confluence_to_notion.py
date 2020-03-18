@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import os
+import re
 import sys
 import urllib
 
@@ -34,6 +35,21 @@ def main(client, notion_import_url, confluence_export_dir, space_name, dry_run=F
                 dry_run=dry_run,
                 space_name=space_name,
             )
+
+
+def children_recursive(element):
+    """
+    Traverse the tree and recursively yield all child elements.
+
+    Args:
+        element (nb.Block):
+    
+    Returns:
+        generator(nb.Block):
+    """
+    for blk in element.children:
+        yield from children_recursive(blk)
+        yield blk
 
 
 def fix_confluence_notion_html_import(
@@ -88,12 +104,6 @@ def fix_confluence_notion_html_import(
             callout.icon = '💡'
             callout.move_to(page.children[2], "after")
         blocks_to_delete.append(page.children[2])
-
-    # Traverse the block tree
-    def children_recursive(element):
-        for blk in element.children:
-            yield from children_recursive(blk)
-            yield blk
 
     # Find all incorrectly imported image blocks
     image_blocks_to_replace = []
@@ -164,9 +174,56 @@ def fix_confluence_notion_html_import(
             blk.remove()
 
 
+def get_subpage_titles_to_url(page):
+    """
+    Return a dict of immediate subpage titles to Notion page URL.
+
+    Args:
+        page (nb.PageBlock):
+    
+    Returns:
+        dict(str, str): title -> URL
+    """
+    data = dict()
+    for block in page.children:
+        if isinstance(block, nb.PageBlock):
+            data[block.title] = block.get_browseable_url()
+    return data
+
+
+# Pattern for matching confluence-like links
+PAGE_LINK_PATTERN = re.compile(r'\[(?P<title>.*)\]\((?P<confluence_page_id>[0-9]+).html\)')
+
+
+def fix_page_links(title_to_url, page):
+    """
+    Fix the links on the given page using the dict of titles to URLs.
+
+    Args:
+        title_to_url (dict):
+        page (nb.PageBlock):
+    """
+    for block in children_recursive(page):
+        if isinstance(block, nb.PageBlock):
+            logging.info('=== Page: {} ==='.format(block.title))
+
+        if not hasattr(block, 'title'):
+            continue
+        match = PAGE_LINK_PATTERN.match(block.title)
+
+        if match:
+            title = match.groupdict()['title']
+            if title not in title_to_url:
+                logging.error('No URL for title: "{}"'.format(title))
+                continue
+
+            url = title_to_url[title]
+            logging.info('Fixing link for "{}"'.format(title))
+            block.title = block.title.replace(match.string, '[{}]({})'.format(title, url))
+
+
 if __name__ == '__main__':
     import argparse
-    import logging
 
     # Set log level
     logging.root.setLevel(logging.INFO)
@@ -197,11 +254,18 @@ if __name__ == '__main__':
     parser.add_argument('--dry-run', action='store_true', help='Print actions but don\'t execute.')
     args = parser.parse_args()
 
+    # Get mapping of page title to Notion URL from the import page
+    import_page = client.get_block(args.notion_url)
+    title_to_url = get_subpage_titles_to_url(import_page)
+
+    # Fix page links
+    fix_page_links(title_to_url, import_page)
+
     # Run
-    main(
-        client=client,
-        notion_import_url=args.notion_url,
-        confluence_export_dir=args.confluence_dir,
-        space_name=args.space_name,
-        dry_run=args.dry_run,
-    )
+    # main(
+    #     client=client,
+    #     notion_import_url=args.notion_url,
+    #     confluence_export_dir=args.confluence_dir,
+    #     space_name=args.space_name,
+    #     dry_run=args.dry_run,
+    # )
