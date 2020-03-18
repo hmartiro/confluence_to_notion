@@ -1,54 +1,93 @@
 #!/usr/bin/env python3
 import logging
 import os
+import sys
 import urllib
 
 from notion.client import NotionClient
 from notion import block
 
 
-def fix_confluence_notion_html_import(client, confluence_export_dir, notion_page_url,
-                                      dry_run=False):
+def main(client, notion_import_url, confluence_export_dir, space_name, dry_run=False):
     """
-    Fix up an HTML page imported from Confluence to Notion.
+    Fix up Notion pages imported from Confluence HTML export.
 
     Args:
         client (NotionClient):
-        confluence_export_dir (str): Path to directory containing Confluence HTML export
-        notion_page_url (str): URL of Notion page imported from the HTML
-        dry_run (bool): Just print what you'll do
+        notion_import_url (str): Notion URL to import summary page
+        confluence_export_dir (str): Local directory containing Confluence HTML export
+        space_name (str): Name of the exported Confluence space
+        dry_run (bool): Print, don't execute
     """
-    # Get the page as a block
-    logging.info(f'Notion page: {notion_page_url}')
-    page = client.get_block(notion_page_url)
+    # Get the summary page as a block
+    logging.info(f'Notion import URL: {notion_import_url}')
+    summary_page = client.get_block(notion_import_url)
+
+    # Fix each child page
+    for blk in summary_page.children:
+        if isinstance(blk, block.PageBlock):
+            logging.info(f'Fixing page: "{blk.title}"')
+            fix_confluence_notion_html_import(
+                client=client,
+                confluence_export_dir=confluence_export_dir,
+                page=blk,
+                dry_run=dry_run,
+                space_name=space_name,
+            )
+
+
+def fix_confluence_notion_html_import(
+    client, page, confluence_export_dir, space_name, dry_run=False
+):
+    """
+    Fix up one Notion page imported from Confluence HTML export.
+
+    Args:
+        client (NotionClient):
+        page (block.PageBlock):
+        confluence_export_dir (str):
+        space_name (str):
+        dry_run (bool):
+    """
+    blocks_to_delete = []
+
+    if page.title == 'index':
+        # If it's the index page, delete
+        logging.info('Found dummy index page, deleting.')
+        if not dry_run:
+            page.remove()
+        return
+    elif not page.children[0].title.startswith('[{}'.format(space_name)):
+        logging.critical('Aborting, I don\'t recognize this page format.')
+        sys.exit(1)
+
+    blocks_to_delete.append(page.children[0])
 
     # Set title from the second block, stripping out some crap
     original_title = page.title
     new_title = original_title
     if isinstance(page.children[1], block.HeaderBlock):
-        if page.children[1].title.startswith('Software : '):
-            new_title = page.children[1].title[len('Software : '):]
+        expected_title = '{} : '.format(space_name)
+        if page.children[1].title.startswith(expected_title):
+            new_title = page.children[1].title[len(expected_title) :]
             if not dry_run:
                 page.title = new_title
-                page.children[1].remove()
+            blocks_to_delete.append(page.children[1])
 
     # Print title
     if original_title == new_title:
-        print(f'Title: "{new_title}"')
+        logging.info(f'Title: "{new_title}"')
     else:
-        print(f'Title: "{original_title}" --> "{new_title}"')
+        logging.info(f'Title: "{original_title}" --> "{new_title}"')
 
-    # Delete the first block which is a broken space link
-    if page.children[0].title == '[Software](index.html)' and not dry_run:
-        page.children[0].remove()
-    
-    # Delete the first block which is a broken space link
-    if page.children[0].title.startswith('Created by') and not dry_run:
-        note = 'Imported from Confluence page c' + page.children[0].title[1:]
-        callout = page.children.add_new(block.CalloutBlock, title=note)
-        callout.icon = '💡'
-        callout.move_to(page.children[0], "after")
-        page.children[0].remove()
+    # Delete the now first block which is a broken space link
+    if page.children[2].title.startswith('Created by'):
+        note = 'Imported from Confluence page c' + page.children[2].title[1:]
+        if not dry_run:
+            callout = page.children.add_new(block.CalloutBlock, title=note)
+            callout.icon = '💡'
+            callout.move_to(page.children[2], "after")
+        blocks_to_delete.append(page.children[2])
 
     # Traverse the block tree
     def children_recursive(block):
@@ -61,10 +100,14 @@ def fix_confluence_notion_html_import(client, confluence_export_dir, notion_page
     for blk in children_recursive(page):
         if isinstance(blk, block.ImageBlock):
             if blk.source.startswith('attachments/'):
+                # This is a relative image which we'll upload to S3 and replace
                 image_blocks_to_replace.append(blk)
+            elif blk.source.startswith('https://skydio.atlassian.net/secure/viewavatar'):
+                # This is a JIRA ticket avatar image which we'll delete
+                blocks_to_delete.append(blk)
 
     # Fix image blocks
-    print(f'Fixing {len(image_blocks_to_replace)} broken image blocks...')
+    logging.info(f'Fixing {len(image_blocks_to_replace)} broken image blocks...')
     for broken_image_block in image_blocks_to_replace:
         # Pull out the on-disk directory from the broken URL
         parsed = urllib.parse.urlparse(broken_image_block.source)
@@ -75,35 +118,87 @@ def fix_confluence_notion_html_import(client, confluence_export_dir, notion_page
             width = int(query_dict['width'][0])
         else:
             width = None
-    
-        print(f'Uploading image (width={width}): {local_image_path}')
+
+        logging.info(f'Uploading image (width={width}): {local_image_path}')
+        blocks_to_delete.append(broken_image_block)
+
         if dry_run:
             continue
 
         # Create a new block by uploading the image to Notion S3
         new_image_block = page.children.add_new(block.ImageBlock, width=width)
         new_image_block.upload_file(local_image_path)
-        
+
         # Replace old block
         new_image_block.move_to(broken_image_block, "after")
-        broken_image_block.remove()
+
+    # Delete some other unwanted blocks
+    found = False
+    for blk in page.children:
+        # Delete everything after and including the attachments header
+        if isinstance(blk, block.SubheaderBlock) and blk.title == 'Attachments:':
+            found = True
+        if found:
+            blocks_to_delete.append(blk)
+
+        # Also delete this footer
+        if isinstance(blk, block.TextBlock) and blk.title.startswith('Document generated by'):
+            blocks_to_delete.append(blk)
+
+        # Also delete this footer
+        if isinstance(blk, block.TextBlock) and blk.title.startswith('[Atlassian'):
+            blocks_to_delete.append(blk)
+
+    # Actually delete all blocks
+    for blk in blocks_to_delete:
+        logging.info(f'Removing {blk.__class__.__name__}: {blk}')
+        if not dry_run:
+            blk.remove()
 
 
-# Confluence HTML export directory
-confluence_export_dir = '/Users/hayk/Downloads/confluence_export'
+if __name__ == '__main__':
+    import argparse
+    import logging
 
-# Notion page to fix up
-notion_page_url = 'https://www.notion.so/link/to/My-Page'
+    # Set log level
+    logging.root.setLevel(logging.INFO)
 
-# Create Notion client
-# Obtain the `token_v2` value by inspecting your browser cookies on a logged-in session on Notion.so
-token = 'to_be_filled_in'
-client = NotionClient(token_v2=token)
+    # Read auth token
+    notion_token = os.environ.get('NOTION_TOKEN', '')
+    if not notion_token:
+        logging.critical(
+            'Set NOTION_TOKEN environment variable by inspecting your browser '
+            'on a logged-in session to Notion.so.'
+        )
+        sys.exit(1)
 
-# Run
-fix_confluence_notion_html_import(
-    client=client,
-    confluence_export_dir=confluence_export_dir,
-    notion_page_url=notion_page_url,
-    dry_run=False
-)
+    # Create client
+    client = NotionClient(token_v2=notion_token)
+
+    # page = client.get_block('https://www.notion.so/skydio/Embedded-Meeting-Notes_246677941-75ff2f58ca914638b444373c429fe878')
+    # for blk in page.children:
+    #     print(type(blk), blk)
+    # sys.exit(1)
+
+    # Parse args
+    parser = argparse.ArgumentParser(description='Fix Confluence to Notion HTML importing.')
+    parser.add_argument(
+        '--confluence-dir', required=True, type=str, help='Confluence HTML export directory'
+    )
+    parser.add_argument(
+        '--notion-url', required=True, type=str, help='Notion import summary page URL'
+    )
+    parser.add_argument(
+        '--space-name', type=str, default='Software', help='Exported Confluence Space name'
+    )
+    parser.add_argument('--dry-run', action='store_true', help='Print actions but don\'t execute.')
+    args = parser.parse_args()
+
+    # Run
+    main(
+        client=client,
+        notion_import_url=args.notion_url,
+        confluence_export_dir=args.confluence_dir,
+        space_name=args.space_name,
+        dry_run=args.dry_run,
+    )
