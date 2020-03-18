@@ -4,8 +4,33 @@ import os
 import sys
 import urllib
 
-from notion import block as nb
+
 from notion import client as notion_client
+
+def monkey_patch_for_python3_5():
+    from requests import Session
+    from requests.packages.urllib3.util.retry import Retry
+    from requests.adapters import HTTPAdapter
+
+    def create_session():
+        session = Session()
+        retry = Retry(
+            # The status= kwarg was removed here
+            5,
+            backoff_factor=0.3,
+            status_forcelist=(502,),
+            # CAUTION: adding 'POST' to this list which is not technically idempotent
+            method_whitelist=("POST", "HEAD", "TRACE", "GET", "PUT", "OPTIONS", "DELETE"),
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount("https://", adapter)
+        return session
+
+    notion_client.create_session
+
+monkey_patch_for_python3_5()
+
+from notion import block as nb
 
 
 def main(client, notion_import_url, confluence_export_dir, space_name, dry_run=False):
@@ -164,28 +189,6 @@ def fix_confluence_notion_html_import(
             blk.remove()
 
 
-def monkey_patch_for_python3_5():
-    from requests import Session
-    from requests.packages.urllib3.util.retry import Retry
-    from requests.adapters import HTTPAdapter
-
-    def create_session():
-        session = Session()
-        retry = Retry(
-            # The status= kwarg was removed here
-            5,
-            backoff_factor=0.3,
-            status_forcelist=(502,),
-            # CAUTION: adding 'POST' to this list which is not technically idempotent
-            method_whitelist=("POST", "HEAD", "TRACE", "GET", "PUT", "OPTIONS", "DELETE"),
-        )
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount("https://", adapter)
-        return session
-
-    notion_client.create_session
-
-
 if __name__ == '__main__':
     import argparse
     import logging
@@ -201,9 +204,6 @@ if __name__ == '__main__':
             'on a logged-in session to Notion.so.'
         )
         sys.exit(1)
-
-    # Monkey patch to make python 3.5 work
-    monkey_patch_for_python3_5()
 
     # Create client
     client = notion_client.NotionClient(token_v2=notion_token)
