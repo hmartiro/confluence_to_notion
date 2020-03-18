@@ -43,7 +43,7 @@ def children_recursive(element):
 
     Args:
         element (nb.Block):
-    
+
     Returns:
         generator(nb.Block):
     """
@@ -97,13 +97,14 @@ def fix_confluence_notion_html_import(
         logging.info('Title: "{}" --> "{}"'.format(original_title, new_title))
 
     # Delete the now first block which is a broken space link
-    if page.children[2].title.startswith('Created by'):
-        note = 'Imported from Confluence page c' + page.children[2].title[1:]
-        if not dry_run:
-            callout = page.children.add_new(nb.CalloutBlock, title=note)
-            callout.icon = '💡'
-            callout.move_to(page.children[2], "after")
-        blocks_to_delete.append(page.children[2])
+    if isinstance(page.children[2], nb.HeaderBlock):
+        if page.children[2].title.startswith('Created by'):
+            note = 'Imported from Confluence page c' + page.children[2].title[1:]
+            if not dry_run:
+                callout = page.children.add_new(nb.CalloutBlock, title=note)
+                callout.icon = '💡'
+                callout.move_to(page.children[2], "after")
+            blocks_to_delete.append(page.children[2])
 
     # Find all incorrectly imported image blocks
     image_blocks_to_replace = []
@@ -180,7 +181,7 @@ def get_subpage_titles_to_url(page):
 
     Args:
         page (nb.PageBlock):
-    
+
     Returns:
         dict(str, str): title -> URL
     """
