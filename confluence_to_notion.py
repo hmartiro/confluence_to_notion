@@ -4,32 +4,7 @@ import os
 import sys
 import urllib
 
-
-from notion import client as notion_client
-
-def monkey_patch_for_python3_5():
-    from requests import Session
-    from requests.packages.urllib3.util.retry import Retry
-    from requests.adapters import HTTPAdapter
-
-    def create_session():
-        session = Session()
-        retry = Retry(
-            # The status= kwarg was removed here
-            5,
-            backoff_factor=0.3,
-            status_forcelist=(502,),
-            # CAUTION: adding 'POST' to this list which is not technically idempotent
-            method_whitelist=("POST", "HEAD", "TRACE", "GET", "PUT", "OPTIONS", "DELETE"),
-        )
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount("https://", adapter)
-        return session
-
-    notion_client.create_session
-
-monkey_patch_for_python3_5()
-
+from notion_client import NotionClientPy35
 from notion import block as nb
 
 
@@ -50,7 +25,7 @@ def main(client, notion_import_url, confluence_export_dir, space_name, dry_run=F
 
     # Fix each child page
     for blk in summary_page.children:
-        if isinstance(blk, bn.PageBlock):
+        if isinstance(blk, nb.PageBlock):
             logging.info('Fixing page: "{}"'.format(blk.title))
             fix_confluence_notion_html_import(
                 client=client,
@@ -69,7 +44,7 @@ def fix_confluence_notion_html_import(
 
     Args:
         client (NotionClient):
-        page (bn.PageBlock):
+        page (nb.PageBlock):
         confluence_export_dir (str):
         space_name (str):
         dry_run (bool):
@@ -91,7 +66,7 @@ def fix_confluence_notion_html_import(
     # Set title from the second block, stripping out some crap
     original_title = page.title
     new_title = original_title
-    if isinstance(page.children[1], bn.HeaderBlock):
+    if isinstance(page.children[1], nb.HeaderBlock):
         expected_title = '{} : '.format(space_name)
         if page.children[1].title.startswith(expected_title):
             new_title = page.children[1].title[len(expected_title) :]
@@ -109,21 +84,21 @@ def fix_confluence_notion_html_import(
     if page.children[2].title.startswith('Created by'):
         note = 'Imported from Confluence page c' + page.children[2].title[1:]
         if not dry_run:
-            callout = page.children.add_new(bn.CalloutBlock, title=note)
+            callout = page.children.add_new(nb.CalloutBlock, title=note)
             callout.icon = '💡'
             callout.move_to(page.children[2], "after")
         blocks_to_delete.append(page.children[2])
 
     # Traverse the block tree
-    def children_recursive(block):
-        for blk in bn.children:
+    def children_recursive(element):
+        for blk in element.children:
             yield from children_recursive(blk)
             yield blk
 
     # Find all incorrectly imported image blocks
     image_blocks_to_replace = []
     for blk in children_recursive(page):
-        if isinstance(blk, bn.ImageBlock):
+        if isinstance(blk, nb.ImageBlock):
             if blk.source.startswith('attachments/'):
                 # This is a relative image which we'll upload to S3 and replace
                 image_blocks_to_replace.append(blk)
@@ -206,7 +181,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # Create client
-    client = notion_client.NotionClient(token_v2=notion_token)
+    client = NotionClientPy35(token_v2=notion_token)
 
     # Parse args
     parser = argparse.ArgumentParser(description='Fix Confluence to Notion HTML importing.')
