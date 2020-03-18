@@ -12,6 +12,7 @@ Currently handles:
 4) Deleting the extraneous "Attachments" section at the end 
 5) Deleting JIRA ticket type images that show up huge
 6) Adding a callout that shows when the confluence page was made 
+7) Delete emoticon images that become broken
 
 Does not handle: 
 1) Links to other confluence pages

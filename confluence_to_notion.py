@@ -58,8 +58,8 @@ def fix_confluence_notion_html_import(
             page.remove()
         return
     elif not page.children[0].title.startswith('[{}'.format(space_name)):
-        logging.critical('Aborting, I don\'t recognize this page format.')
-        sys.exit(1)
+        logging.error('Aborting, I don\'t recognize this page format.')
+        return
 
     blocks_to_delete.append(page.children[0])
 
@@ -105,6 +105,9 @@ def fix_confluence_notion_html_import(
             elif blk.source.startswith('https://skydio.atlassian.net/secure/viewavatar'):
                 # This is a JIRA ticket avatar image which we'll delete
                 blocks_to_delete.append(blk)
+            elif 'images/icons/emoticons' in blk.source:
+                # This is an emoticon relative link which doesn't work
+                blocks_to_delete.append(blk)
 
     # Fix image blocks
     logging.info(f'Fixing {len(image_blocks_to_replace)} broken image blocks...')
@@ -119,8 +122,13 @@ def fix_confluence_notion_html_import(
         else:
             width = None
 
-        logging.info(f'Uploading image (width={width}): {local_image_path}')
         blocks_to_delete.append(broken_image_block)
+
+        if not os.path.exists(local_image_path):
+            logging.error(f'Image not found: {local_image_path}')
+            continue
+
+        logging.info(f'Uploading image (width={width}): {local_image_path}')
 
         if dry_run:
             continue
@@ -174,11 +182,6 @@ if __name__ == '__main__':
 
     # Create client
     client = NotionClient(token_v2=notion_token)
-
-    # page = client.get_block('https://www.notion.so/skydio/Embedded-Meeting-Notes_246677941-75ff2f58ca914638b444373c429fe878')
-    # for blk in page.children:
-    #     print(type(blk), blk)
-    # sys.exit(1)
 
     # Parse args
     parser = argparse.ArgumentParser(description='Fix Confluence to Notion HTML importing.')
