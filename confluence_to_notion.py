@@ -258,13 +258,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Run
-    # main(
-    #     client=client,
-    #     notion_import_url=args.notion_url,
-    #     confluence_export_dir=args.confluence_dir,
-    #     space_name=args.space_name,
-    #     dry_run=args.dry_run,
-    # )
+    main(
+        client=client,
+        notion_import_url=args.notion_url,
+        confluence_export_dir=args.confluence_dir,
+        space_name=args.space_name,
+        dry_run=args.dry_run,
+    )
 
     if args.fix_links:
         # Get mapping of page title to Notion URL from the import page
