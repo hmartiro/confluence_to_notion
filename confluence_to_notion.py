@@ -257,6 +257,7 @@ if __name__ == '__main__':
     # Get mapping of page title to Notion URL from the import page
     import_page = client.get_block(args.notion_url)
     title_to_url = get_subpage_titles_to_url(import_page)
+    logging.info('Made title->URL dict with {} entries.'.format(len(title_to_url)))
 
     # Fix page links
     fix_page_links(title_to_url, import_page)
