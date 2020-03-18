@@ -191,8 +191,8 @@ def get_subpage_titles_to_url(page):
     return data
 
 
-# Pattern for matching confluence-like links
-PAGE_LINK_PATTERN = re.compile(r'\[(?P<title>.*)\]\((?P<confluence_page_id>[0-9]+).html\)')
+# Pattern for matching links
+PAGE_LINK_PATTERN = re.compile(r'\[(?P<title>.+)\]\((?P<confluence_page_id>.+).html\)')
 
 
 def fix_page_links(title_to_url, page):
@@ -209,15 +209,14 @@ def fix_page_links(title_to_url, page):
 
         if not hasattr(block, 'title'):
             continue
-        match = PAGE_LINK_PATTERN.match(block.title)
 
-        if match:
+        for match in PAGE_LINK_PATTERN.finditer(block.title):
             title = match.groupdict()['title']
             if title not in title_to_url:
-                logging.error('No URL for title: "{}"'.format(title))
+                logging.warning('Unmatched URL: "{}"'.format(title))
                 continue
-
             url = title_to_url[title]
+
             logging.info('Fixing link for "{}"'.format(title))
             block.title = block.title.replace(match.string, '[{}]({})'.format(title, url))
 
