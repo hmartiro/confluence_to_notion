@@ -192,7 +192,7 @@ def get_subpage_titles_to_url(page):
 
 
 # Pattern for matching links
-PAGE_LINK_PATTERN = re.compile(r'\[(?P<title>.+)\]\((?P<confluence_page_id>.+).html\)')
+PAGE_LINK_PATTERN = re.compile(r'\[(?P<title>.+)\]\((?P<confluence_page_id>.+)\)')
 
 
 def fix_page_links(title_to_url, page):
@@ -251,15 +251,11 @@ if __name__ == '__main__':
         '--space-name', type=str, default='Software', help='Exported Confluence Space name'
     )
     parser.add_argument('--dry-run', action='store_true', help='Print actions but don\'t execute.')
+    parser.add_argument(
+        '--fix-links', action='store_true', help='Try to fix links to known imported pages.'
+    )
+
     args = parser.parse_args()
-
-    # Get mapping of page title to Notion URL from the import page
-    import_page = client.get_block(args.notion_url)
-    title_to_url = get_subpage_titles_to_url(import_page)
-    logging.info('Made title->URL dict with {} entries.'.format(len(title_to_url)))
-
-    # Fix page links
-    fix_page_links(title_to_url, import_page)
 
     # Run
     # main(
@@ -269,3 +265,12 @@ if __name__ == '__main__':
     #     space_name=args.space_name,
     #     dry_run=args.dry_run,
     # )
+
+    if args.fix_links:
+        # Get mapping of page title to Notion URL from the import page
+        import_page = client.get_block(args.notion_url)
+        title_to_url = get_subpage_titles_to_url(import_page)
+        logging.info('Made title->URL dict with {} entries.'.format(len(title_to_url)))
+
+        # Fix page links
+        fix_page_links(title_to_url, import_page)
