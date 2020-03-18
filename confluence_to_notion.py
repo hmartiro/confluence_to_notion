@@ -20,13 +20,13 @@ def main(client, notion_import_url, confluence_export_dir, space_name, dry_run=F
         dry_run (bool): Print, don't execute
     """
     # Get the summary page as a block
-    logging.info(f'Notion import URL: {notion_import_url}')
+    logging.info('Notion import URL: {}'.format(notion_import_url))
     summary_page = client.get_block(notion_import_url)
 
     # Fix each child page
     for blk in summary_page.children:
         if isinstance(blk, block.PageBlock):
-            logging.info(f'Fixing page: "{blk.title}"')
+            logging.info('Fixing page: "{}"'.format(blk.title))
             fix_confluence_notion_html_import(
                 client=client,
                 confluence_export_dir=confluence_export_dir,
@@ -76,9 +76,9 @@ def fix_confluence_notion_html_import(
 
     # Print title
     if original_title == new_title:
-        logging.info(f'Title: "{new_title}"')
+        logging.info('Title: "{}"'.format(new_title))
     else:
-        logging.info(f'Title: "{original_title}" --> "{new_title}"')
+        logging.info('Title: "{}" --> "{}"'.format(original_title, new_title))
 
     # Delete the now first block which is a broken space link
     if page.children[2].title.startswith('Created by'):
@@ -110,7 +110,7 @@ def fix_confluence_notion_html_import(
                 blocks_to_delete.append(blk)
 
     # Fix image blocks
-    logging.info(f'Fixing {len(image_blocks_to_replace)} broken image blocks...')
+    logging.info('Fixing {len()} broken image blocks...'.format(image_blocks_to_replace))
     for broken_image_block in image_blocks_to_replace:
         # Pull out the on-disk directory from the broken URL
         parsed = urllib.parse.urlparse(broken_image_block.source)
@@ -125,10 +125,10 @@ def fix_confluence_notion_html_import(
         blocks_to_delete.append(broken_image_block)
 
         if not os.path.exists(local_image_path):
-            logging.error(f'Image not found: {local_image_path}')
+            logging.error('Image not found: {}'.format(local_image_path))
             continue
 
-        logging.info(f'Uploading image (width={width}): {local_image_path}')
+        logging.info('Uploading image (width={}): {}'.format(width, local_image_path))
 
         if dry_run:
             continue
@@ -159,7 +159,7 @@ def fix_confluence_notion_html_import(
 
     # Actually delete all blocks
     for blk in blocks_to_delete:
-        logging.info(f'Removing {blk.__class__.__name__}: {blk}')
+        logging.info('Removing {}: {}'.format(blk.__class__.__name__, blk))
         if not dry_run:
             blk.remove()
 
