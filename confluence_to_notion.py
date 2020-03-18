@@ -110,7 +110,7 @@ def fix_confluence_notion_html_import(
                 blocks_to_delete.append(blk)
 
     # Fix image blocks
-    logging.info('Fixing {len()} broken image blocks...'.format(image_blocks_to_replace))
+    logging.info('Fixing {} broken image blocks...'.format(len(image_blocks_to_replace)))
     for broken_image_block in image_blocks_to_replace:
         # Pull out the on-disk directory from the broken URL
         parsed = urllib.parse.urlparse(broken_image_block.source)

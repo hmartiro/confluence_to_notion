@@ -40,7 +40,7 @@ Save the URL of this page, it will be passed to the script.
 
 ### 3) Set your Notion cookie
 
-In a browser session where you're logged into Notion.so, open:
+In a browser session where you're logged into Notion.so, open:  
 `chrome://settings/cookies/detail?site=www.notion.so`
 
 Find the `token_v2` entry and copy the Content.
