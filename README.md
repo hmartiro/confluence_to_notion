@@ -14,10 +14,9 @@ Currently handles:
 6) Adding a callout that shows when the confluence page was made 
 
 Does not handle: 
-1) Links to other pages
-2) Sub-pages?
-3) Handle videos, PDFs and arbitrary other attachments?
-4) Callout should link back to original confluence page
+1) Links to other confluence pages
+2) Handle videos, PDFs and arbitrary other attachments?
+3) Callout should link back to original confluence page
 
 # Usage
 
